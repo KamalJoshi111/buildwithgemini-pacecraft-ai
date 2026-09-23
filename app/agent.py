@@ -20,6 +20,7 @@ from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.apps import App
 from google.adk.models import Gemini
+from google.adk.tools import ToolContext
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from google.genai import types
 
@@ -223,6 +224,70 @@ def generate_running_gear_image(item_description: str) -> str:
         return f"Failed to generate image: {str(e)}"
 
 
+async def generate_running_video(prompt: str, tool_context: ToolContext) -> str:
+    """Generates a short video for running, marathon events, athletic gear, or endurance coaching using gemini-omni-flash-preview in the global region.
+    Saves the video as an artifact in the Playground session and uploads it directly to Cloud Storage, returning the public HTTPS URL.
+
+    Args:
+        prompt: Description of the running video clip to generate.
+        tool_context: ToolContext for saving the video artifact to the agent session.
+
+    Returns:
+        The public Cloud Storage URL of the generated video.
+    """
+    import base64
+    import uuid
+    from google import genai
+    from google.genai import types
+    from google.cloud import storage
+
+    project_id = "qwiklabs-gcp-03-3e15bc834bf2"
+    bucket_name = "pacecraft-ai-assets-qwiklabs-gcp-03-3e15bc834bf2"
+
+    try:
+        client = genai.Client(project=project_id, location="global", vertexai=True)
+        response = client.interactions.create(
+            model="gemini-omni-flash-preview",
+            input=f"A short video for runners: {prompt}",
+        )
+
+        output_video = getattr(response, "output_video", None)
+        if not output_video or not getattr(output_video, "data", None):
+            return "Error: No video content returned from Gemini Omni model."
+
+        raw_data = output_video.data
+        if isinstance(raw_data, str):
+            video_bytes = base64.b64decode(raw_data)
+        else:
+            video_bytes = raw_data
+
+        mime_type = getattr(output_video, "mime_type", None) or "video/mp4"
+        ext = ".webm" if "webm" in mime_type else ".mp4"
+        filename = f"video_{uuid.uuid4().hex[:8]}{ext}"
+
+        # 1. Save artifact to Playground session via tool_context
+        if tool_context:
+            artifact_part = types.Part.from_bytes(data=video_bytes, mime_type=mime_type)
+            await tool_context.save_artifact(filename=filename, artifact=artifact_part)
+
+        # 2. Upload video bytes to public Cloud Storage bucket without writing to local file
+        storage_client = storage.Client(project=project_id)
+        bucket = storage_client.bucket(bucket_name)
+        blob_path = f"generated_videos/{filename}"
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(video_bytes, content_type=mime_type)
+
+        try:
+            blob.make_public()
+        except Exception:
+            pass
+
+        public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_path}"
+        return f"Generated video successfully: {public_url}"
+    except Exception as e:
+        return f"Failed to generate video: {str(e)}"
+
+
 async def generate_memories_callback(callback_context: CallbackContext):
     """Sends session turns to Vertex AI Memory Bank for durable fact extraction."""
     try:
@@ -259,6 +324,7 @@ a2ui_instruction = schema_manager.generate_system_prompt(
         "Use get_running_weather_forecast to fetch live outdoor running weather conditions given lat/lng coordinates. "
         "Use consult_herbal_docs to look up natural herbs, plant remedies, and botanical information from Culpeper's Herbal. "
         "Use generate_running_gear_image to create realistic image previews of running shoes, apparel, marathon gear, or athletic equipment using gemini-3.1-flash-lite-image in global region and return public image URLs. "
+        "Use generate_running_video to create short videos for running routines, marathon events, athletic gear, or form visualizations using gemini-omni-flash-preview in global region. "
         "Use the training_routines tools (get_training_routines, save_training_routine) to search for or save running routines stored in Firestore. "
         "You can execute Python code in a secure sandbox when calculations, data transformations, or simulations are requested."
     ),
@@ -300,6 +366,7 @@ root_agent = Agent(
         get_running_weather_forecast,
         consult_herbal_docs,
         generate_running_gear_image,
+        generate_running_video,
         get_training_routines,
         save_training_routine,
         PreloadMemoryTool(),

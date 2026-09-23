@@ -30,10 +30,13 @@ PaceCraft AI is an intelligent, agentic AI running and endurance coach built wit
 - **Tool**: `calculate_heart_rate_zones`
 - Computes target heart rate training ranges (Zone 1 Recovery through Zone 5 Anaerobic) using the **Karvonen formula** based on resting and maximum heart rate.
 
-### 🎨 Image Generation & Cloud Storage
-- **Tool**: `generate_running_gear_image`
-- Generates realistic studio product images for athletic apparel and marathon gear using `gemini-3.1-flash-lite-image` in the `global` region.
-- Uploads images to a public **Google Cloud Storage (GCS)** bucket (`pacecraft-ai-assets-*`) and returns public HTTPS URLs.
+### 🎨 Image & Video Generation & Cloud Storage
+- **Tools**:
+  - `generate_running_gear_image`: Generates studio product images for running gear using `gemini-3.1-flash-lite-image` in `global` region.
+  - `generate_running_video`: Generates short videos for running routines, marathon events, or athletic gear using Google's Omni model (`gemini-omni-flash-preview`) in `global` region.
+- **Session & Storage**:
+  - Saves generated media as artifacts in the session using `ToolContext.save_artifact` for the Playground's Artifacts panel.
+  - Uploads raw bytes directly to public Google Cloud Storage (`pacecraft-ai-assets-*`) without local file writes and returns public HTTPS URLs.
 
 ### 📚 Vertex AI RAG Engine Grounding
 - **Tool**: `consult_herbal_docs`
