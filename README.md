@@ -3,6 +3,8 @@
 
 PaceCraft AI is an intelligent, agentic AI running and endurance coach built with Google Cloud's **Agent Development Kit (ADK)** and deployed to **Vertex AI Agent Runtime**. It empowers runners with personalized training schedules, heart rate zone calculations, real-time running weather forecasts, grounded botanical remedies, and AI-generated gear visualizations.
 
+![PaceCraft AI Demo](demo.gif)
+
 ---
 
 ## 🚀 Implemented Features & Architecture
